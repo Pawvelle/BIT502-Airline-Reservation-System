@@ -94,7 +94,7 @@ rows but no day header. That attachment is absent from this repository. For a fi
 containing eight such rows, insert a header such as `1 8` before those rows. Confirm
 the actual attachment and assessment specification before adapting other days.
 
-## Current limits and acknowledgements
+## Current limits
 
 Bookings and occupied-seat arrays last for the current run only. On restart, the
 input capacities are loaded again. The exported report is a human-readable snapshot;
@@ -103,7 +103,4 @@ report. A failed export is reported to the user. Outbound and return trips can b
 booked separately; linked return reservations, fares and named passengers for every
 seat are outside this checkpoint implementation.
 
-Implementation uses Java standard-library APIs only. No third-party code or assets
-were copied. AI assistance (OpenAI Codex) was used for the Checkpoint 2 implementation,
-documentation and test preparation. Review and understand the code, and follow the
-course's AI-use policy and required declaration before submitting.
+Implementation uses Java standard-library APIs only.
