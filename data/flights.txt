@@ -1,0 +1,12 @@
+# Demonstration data created for Checkpoint 2; not the original course attachment.
+# day flightCount
+# flightNumber departure destination businessCapacity economyCapacity
+1 3
+NZ101 Auckland Wellington 2 3
+NZ202 Wellington Christchurch 1 3
+NZ303 Christchurch Auckland 0 4
+2 2
+NZ101 Auckland Wellington 2 3
+NZ404 Wellington Auckland 1 3
+10 1
+NZ505 Auckland Queenstown 1 3

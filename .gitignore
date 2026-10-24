@@ -1,6 +1,7 @@
 # Java build output
 bin/
 *.class
+output/
 
 # macOS metadata
 .DS_Store

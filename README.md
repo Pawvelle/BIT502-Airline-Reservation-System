@@ -1,58 +1,27 @@
-# BIT502 Airline Reservation System
+# BIT502 Airline Reservation System — Checkpoint 2
 
-A Java console application for the BIT502 Programming Fundamentals assignment. This version implements the structure, menu, flight display, and basic reservations for **Checkpoint 1**. The complete assignment features are still in progress.
+A Java console application extending the Checkpoint 1 project with flight file input,
+seat arrays, day selection, cabin selection, group bookings, cancellation and report output.
+The entry class remains `Reservation`. No external Java libraries are required.
 
-## Checkpoint 1 status
+## Checkpoint evidence
 
-The code covers the functional scope listed for Checkpoint 1. Command-line compilation and eight functional checks passed on 24 October 2026.
-
-| Requirement | Current evidence |
+| Focus | Implementation |
 | --- | --- |
-| Clear class structure | Three classes with separate responsibilities |
-| Working console menu | Repeating menu with four options and normal exit |
-| Initial flight viewing logic | Displays three sample flights and remaining seats |
-| Basic reservations | Books one seat, creates a booking, and reduces availability |
-| Methods to organise code | Separate methods for the menu, flight display, booking, and booking display |
+| Arrays | `Flight[] flights`; each flight has `boolean[] businessSeats` and `boolean[] economySeats`; each booking holds `int[] seatNumbers` |
+| File input | Loads and validates a user-selected UTF-8 text file before showing the menu |
+| File output | Writes remaining seats for every scheduled flight to `output/availability.txt`, on option 6 and on exit |
+| Interaction | Repeating menu, day/flight/cabin/party selection, alternate cabin offered with explicit `y` agreement |
+| Refinement | Cancellation releases numbered seats; cancelled bookings remain visible; booking numbers are never reused within a run |
+| Validation | Rejects malformed files, duplicate day/flight entries, invalid menu/numeric input, blank names and insufficient capacity; handles end-of-input |
 
-The entry class is `Reservation` in `Reservation.java`, matching the naming requirement in the assessment brief.
-
-## Project structure and design
-
-```text
-src/
-  Reservation.java               Entry point, menu, and application logic
-  Flight.java                    Flight details and available-seat count
-  Booking.java                   Booking number, passenger, and flight
-bin/                             Compiled output used by VS Code
-lib/                             No external libraries currently required
-.vscode/settings.json            VS Code Java settings
-README.md                        Project documentation
-```
-
-`Flight[]` stores the sample flights. An `ArrayList<Booking>` stores bookings for the current session. Each booking refers to a `Flight` object. Only `Reservation` contains a `main` method.
-
-## Current features
-
-| Menu option | Behaviour |
-| --- | --- |
-| `1. View flights` | Shows flight number, destination, and available seats |
-| `2. Book a seat` | Accepts a flight number and a non-empty passenger name, then reserves one seat |
-| `3. View bookings` | Shows bookings created during the current run |
-| `4. Exit` | Ends the program |
-
-Flight numbers are case-insensitive, and surrounding input spaces are trimmed. Entering `0` at the flight-number prompt returns to the menu. The program rejects invalid menu options, unknown flights, blank passenger names, and bookings on a full flight.
-
-| Sample flight | Destination | Initial available seats |
-| --- | --- | ---: |
-| NZ101 | Auckland | 3 |
-| NZ202 | Wellington | 2 |
-| NZ303 | Christchurch | 1 |
-
-Flights are hard-coded. Bookings and seat changes are held in memory and reset when the program restarts. Each booking reserves one seat; dates, departure cities, seating classes, and seat numbers are not implemented yet.
+Compared with Checkpoint 1, flights are now loaded from a file instead of hard-coded,
+availability is tracked separately for each day and cabin, and reservations can include
+multiple seats. Missing files and invalid inputs produce messages without a stack trace.
 
 ## Compile and run
 
-Install a Java Development Kit (JDK). No external libraries are needed. From the project root:
+Use JDK 8 or newer. From the project root:
 
 ```sh
 mkdir -p bin
@@ -60,43 +29,81 @@ javac -d bin src/Reservation.java src/Flight.java src/Booking.java
 java -cp bin Reservation
 ```
 
-In VS Code, open the project folder, open `src/Reservation.java`, and select **Run** above `main`. Enter responses in the terminal.
+Press Enter at the file prompt to load `data/flights.txt`, or enter another file path.
+Enter `0` to exit before loading. A command-line path can also be supplied:
 
-## Functional checks
+```sh
+java -cp bin Reservation data/flights.txt
+```
 
-All three source files compiled together. The following eight scenarios passed during command-line testing on 24 October 2026, with compiled test output stored in a temporary directory.
+In VS Code, open this folder and run `main` in `src/Reservation.java` using **Run Java**.
+Keep the working directory set to the project root so the default relative paths work.
+For BlueJ, create a project, add all three Java files, and invoke
+`Reservation.main` with `{}`. Copy the `data` folder into that project's working
+directory, or enter an absolute input file path.
 
-Start a fresh run for each row. In the input sequences, `→` means press Enter before the next value.
+| Menu | Action |
+| --- | --- |
+| 1 | Book numbered seats for a passenger/contact and party |
+| 2 | Cancel by booking number and release seats |
+| 3 | Display flights for a selected day (1–10) |
+| 4 | Display availability for all scheduled flights |
+| 5 | Display current-session bookings, including cancelled records |
+| 6 | Export availability without exiting |
+| 7 | Export availability and exit |
 
-| Scenario | Input sequence | Expected and observed result |
-| --- | --- | --- |
-| View flights and exit | `1 → 4` | Shows all three flights and exits normally |
-| Valid booking | `2 → nz101 → Alex Smith → 3 → 1 → 4` | Creates booking 1, lists the passenger, and shows NZ101 with 2 seats remaining |
-| Invalid menu input | `abc → 9 → 4` | Rejects both choices and keeps the menu available |
-| Unknown flight | `2 → BAD → 4` | Reports that the flight was not found |
-| Blank passenger name | `2 → NZ101 → [spaces] → 1 → 3 → 4` | Rejects the name, keeps 3 seats on NZ101, and creates no booking |
-| Full flight | `2 → NZ303 → Alex Smith → 2 → NZ303 → 1 → 4` | Books the only seat, rejects another booking, and shows 0 seats remaining |
-| Return without booking | `2 → 0 → 3 → 4` | Returns to the menu and reports no bookings |
-| Multiple bookings | `2 → NZ101 → Alex → 2 → NZ202 → Sam → 3 → 4` | Creates booking numbers 1 and 2 and lists both passengers |
+Business seats are numbered from 1 to the business capacity; economy seat numbers
+continue from the next number. Each booking belongs to one day,
+one flight and one cabin. A party must fit entirely in one cabin. When it does not
+fit in the requested cabin, the program offers the other cabin if enough seats are
+available. Enter `y` to accept or `n` to decline (case-insensitive); other responses
+are rejected and the confirmation is requested again.
+Flight numbers are case-insensitive. Input is trimmed.
 
-Known robustness limitation: if the input stream ends unexpectedly, `Scanner.nextLine()` throws `NoSuchElementException`. Normal exit through option `4` works. End-of-input handling remains a later improvement.
+## Flight input format
 
-## Data attachment
+The included file contains **invented demonstration data**, not the original course
+attachment. It has six scheduled flights across days 1, 2 and 10, and serves as the
+project's own input file. Additional test files can use the format below.
 
-The supplied `flightinfo.txt.txt` attachment is not currently included in this project or read by the program. It contains eight flight rows with flight number, departure city, destination city, business-seat count, and economy-seat count. It has no day header.
+```text
+# day flightCount
+1 2
+NZ101 Auckland Wellington 2 3
+NZ202 Wellington Christchurch 1 3
+2 1
+NZ101 Auckland Wellington 2 3
+```
 
-The brief specifies a header with a day and flight count before each day's rows, for example `1 8`. Prepare data following that format before implementing file input. The current hard-coded sample flights are independent of this attachment.
+Each header contains a day (1–10) and number of following flights (1–100).
+Each flight row has exactly five whitespace-separated fields:
 
-## Later development
+```text
+flightNumber departureCity destinationCity businessCapacity economyCapacity
+```
 
-The following features remain for development toward Checkpoint 2 and the final system:
+Use underscores in multiword city names, e.g. `New_Plymouth`; they display as spaces.
+Blank lines and full-line `#` comments are ignored. Cabin capacities must be nonnegative
+whole numbers, with 4–16 seats in total per flight. Departure and destination cities
+must differ. A day can occur in only one block; flight numbers and directed routes
+must be unique within that day. A file must contain at least one flight. Invalid files are
+rejected as a whole, and interactive startup lets the user try another path.
 
-- Read flights from a user-specified file and manage flights for days 1–10.
-- Store departure cities, business/economy capacity, and numbered seat assignments.
-- Make return reservations using passenger details, route, dates, seating class, and seat count.
-- Offer the other seating class when the requested class is full, with passenger agreement.
-- Cancel reservations and release seats.
-- Display flights for a selected day and a seat availability report for each flight on each day.
-- Write flight details and remaining seat counts to an output file on exit.
-- Improve validation, exception handling, code comments, and document refinements made after feedback.
+The earlier README described an attachment named `flightinfo.txt.txt` with flight
+rows but no day header. That attachment is absent from this repository. For a file
+containing eight such rows, insert a header such as `1 8` before those rows. Confirm
+the actual attachment and assessment specification before adapting other days.
 
+## Current limits and acknowledgements
+
+Bookings and occupied-seat arrays last for the current run only. On restart, the
+input capacities are loaded again. The exported report is a human-readable snapshot;
+it is not a reloadable booking database, and each export overwrites the previous
+report. A failed export is reported to the user. Outbound and return trips can be
+booked separately; linked return reservations, fares and named passengers for every
+seat are outside this checkpoint implementation.
+
+Implementation uses Java standard-library APIs only. No third-party code or assets
+were copied. AI assistance (OpenAI Codex) was used for the Checkpoint 2 implementation,
+documentation and test preparation. Review and understand the code, and follow the
+course's AI-use policy and required declaration before submitting.
