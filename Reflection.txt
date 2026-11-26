@@ -1,0 +1,8 @@
+BIT502 Assignment - Airline Reservation System
+Written Reflection
+
+Building this airline reservation system in three stages helped me improve my Java code step by step. In Checkpoint 1, I set up three classes (Reservation, Flight, and Booking) with a simple console menu and a few hard-coded flights. Having separate classes early made it much easier to add new features later.
+
+In Checkpoint 2, I changed the program to read flight schedules from a text file instead of hard-coding them. I also added boolean arrays in Flight to track Business and Economy seats by seat number, added input checks so wrong numbers would not crash the program, and saved the seat report to a text file on exit.
+
+For the final version, I checked my program against the assignment brief and noticed that Option 1 only booked one flight instead of a return trip. I updated Booking to store both the leaving and returning flights, so cancelling a booking frees seats on both flights. I also updated Option 1 to search by departure and destination cities, offer the other cabin when one is full, and show the exact error messages for invalid days, missing routes, or not enough seats. Testing each case in VS Code helped me catch and fix input bugs.

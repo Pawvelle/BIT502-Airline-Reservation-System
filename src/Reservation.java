@@ -8,8 +8,9 @@ import java.util.List;
 import java.util.Scanner;
 
 /**
- * Checkpoint 2 console entry point. Paths are relative to the working
- * directory.
+ * Console-based Airline Reservation System entry point.
+ * Manages file loading, round-trip reservations, cancellations,
+ * availability reporting, and output file export.
  */
 public class Reservation {
     private final Scanner input = new Scanner(System.in);
@@ -32,7 +33,7 @@ public class Reservation {
         system.run();
     }
 
-    /** BlueJ: construct Reservation and invoke run(), or invoke main with {}. */
+    /** Prompts for the flight data file and drives the main 5-option menu loop. */
     public void run() {
         while (flights.length == 0 && !endOfInput) {
             String filename = readLine("Flight file [data/flights.txt], or 0 to exit: ");
@@ -49,49 +50,47 @@ public class Reservation {
                 System.out.println("Cannot load flights: " + ex.getMessage());
             }
         }
+
         boolean running = flights.length > 0;
         while (running && !endOfInput) {
             System.out.println("\n=== Airline Reservation System ===");
-            System.out.println("1. Book seats\n2. Cancel booking\n3. View flights for a day"
-                    + "\n4. Availability report (all days)\n5. View bookings\n6. Export report\n7. Exit");
-            String choice = readLine("Choose an option: ");
+            System.out.println("1. Reserve seats for passengers");
+            System.out.println("2. Cancel a reservation");
+            System.out.println("3. Display the flights available");
+            System.out.println("4. Display the seat availability report");
+            System.out.println("5. Exit the program");
+            String choice = readLine("Choose an option (1-5): ");
             if (choice == null) {
                 break;
             }
             switch (choice) {
                 case "1":
-                    bookSeats();
+                    makeReservation();
                     break;
                 case "2":
-                    cancelBooking();
+                    cancelReservation();
                     break;
                 case "3":
-                    displayFlights();
+                    displayFlightsForDay();
                     break;
                 case "4":
-                    for (Flight flight : flights) {
-                        System.out.println(flight.summary());
-                    }
+                    displayAvailabilityReport();
                     break;
                 case "5":
-                    displayBookings();
-                    break;
-                case "6":
-                    exportReport();
-                    break;
-                case "7":
                     running = false;
                     break;
                 default:
-                    System.out.println("Invalid option. Please enter 1 to 7.");
+                    System.out.println("Invalid option. Please enter 1 to 5.");
             }
         }
+
         if (flights.length > 0) {
             exportReport();
         }
         System.out.println("Thank you. Goodbye!");
     }
 
+    /** Reads a trimmed line from standard input and handles EOF cleanly. */
     private String readLine(String prompt) {
         System.out.print(prompt);
         if (!input.hasNextLine()) {
@@ -102,31 +101,261 @@ public class Reservation {
         return input.nextLine().trim();
     }
 
-    private Integer readNumber(String prompt, int min, int max) {
+    /** Reads a non-empty text field, re-prompting if left blank. */
+    private String readNonEmptyText(String prompt) {
+        while (!endOfInput) {
+            String value = readLine(prompt);
+            if (value == null) {
+                return null;
+            }
+            if (!value.isEmpty()) {
+                return value;
+            }
+            System.out.println("Input cannot be empty. Please try again.");
+        }
+        return null;
+    }
+
+    /** Reads any valid integer, catching NumberFormatException on malformed input. */
+    private Integer readInt(String prompt) {
         while (!endOfInput) {
             String value = readLine(prompt);
             if (value == null) {
                 return null;
             }
             try {
-                int number = Integer.parseInt(value);
-                if (number >= min && number <= max) {
-                    return number;
-                }
+                return Integer.parseInt(value);
             } catch (NumberFormatException ex) {
-                // Retry with a range message, including for integer overflow.
+                System.out.println("Invalid number. Please enter a whole number.");
+            }
+        }
+        return null;
+    }
+
+    /** Reads an integer within [min, max], catching NumberFormatException and range errors. */
+    private Integer readNumber(String prompt, int min, int max) {
+        while (!endOfInput) {
+            Integer number = readInt(prompt);
+            if (number == null) {
+                return null;
+            }
+            if (number >= min && number <= max) {
+                return number;
             }
             System.out.println("Enter a whole number from " + min + " to " + max + ".");
         }
         return null;
     }
 
-    private void displayFlights() {
-        Integer day = readNumber("Day (1-10): ", 1, 10);
+    /** Reads the desired seating class (Business or Economy). */
+    private Boolean readCabinChoice() {
+        while (!endOfInput) {
+            String value = readLine("Class of seating (1 = Business, 2 = Economy): ");
+            if (value == null) {
+                return null;
+            }
+            if (value.equals("1") || value.equalsIgnoreCase("business") || value.equalsIgnoreCase("b")) {
+                return Boolean.TRUE;
+            }
+            if (value.equals("2") || value.equalsIgnoreCase("economy") || value.equalsIgnoreCase("e")) {
+                return Boolean.FALSE;
+            }
+            System.out.println("Invalid cabin choice. Enter 1 (Business) or 2 (Economy).");
+        }
+        return null;
+    }
+
+    /** Prompts for a valid y/n confirmation from the passenger. */
+    private boolean askYesNo(String prompt) {
+        while (!endOfInput) {
+            String answer = readLine(prompt);
+            if (answer == null) {
+                return false;
+            }
+            if (answer.equalsIgnoreCase("y") || answer.equalsIgnoreCase("yes")) {
+                return true;
+            }
+            if (answer.equalsIgnoreCase("n") || answer.equalsIgnoreCase("no")) {
+                return false;
+            }
+            System.out.println("Please enter y or n.");
+        }
+        return false;
+    }
+
+    /** Searches the flight array for a matching day and directed city pair. */
+    private Flight findFlight(int day, String departure, String destination) {
+        for (Flight flight : flights) {
+            if (flight.getDay() == day
+                    && flight.getDeparture().equalsIgnoreCase(departure)
+                    && flight.getDestination().equalsIgnoreCase(destination)) {
+                return flight;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Option 1: Collects passenger and round-trip travel details, validates days,
+     * routes, and seat availability (including alternate cabin offer), and reserves both legs.
+     */
+    private void makeReservation() {
+        String firstName = readNonEmptyText("Passenger first name: ");
+        if (firstName == null) {
+            return;
+        }
+        String lastName = readNonEmptyText("Passenger last name: ");
+        if (lastName == null) {
+            return;
+        }
+        String departureCity = readNonEmptyText("Departure city: ");
+        if (departureCity == null) {
+            return;
+        }
+        String destinationCity = readNonEmptyText("Destination city: ");
+        if (destinationCity == null) {
+            return;
+        }
+        Integer leaveDay = readInt("Leaving day (1-10): ");
+        if (leaveDay == null) {
+            return;
+        }
+        Integer returnDay = readInt("Returning day (1-10): ");
+        if (returnDay == null) {
+            return;
+        }
+        Boolean requestedBusiness = readCabinChoice();
+        if (requestedBusiness == null) {
+            return;
+        }
+        Integer count = readNumber("Number of seats (1-16): ", 1, 16);
+        if (count == null) {
+            return;
+        }
+
+        // Validate that both days fall within 1..10 and return is not before departure.
+        if (leaveDay < 1 || leaveDay > 10 || returnDay < 1 || returnDay > 10 || returnDay < leaveDay) {
+            System.out.println("One of the days is invalid");
+            return;
+        }
+
+        Flight outbound = findFlight(leaveDay, departureCity, destinationCity);
+        Flight inbound = findFlight(returnDay, destinationCity, departureCity);
+        if (outbound == null || inbound == null) {
+            System.out.println("No flight between those cities");
+            return;
+        }
+
+        boolean outboundBusiness = requestedBusiness;
+        boolean inboundBusiness = requestedBusiness;
+        boolean outboundSwitched = false;
+        boolean inboundSwitched = false;
+
+        // Check outbound capacity; fall back to the other cabin only if enough seats exist.
+        if (outbound.getAvailableSeats(requestedBusiness) < count) {
+            if (outbound.getAvailableSeats(!requestedBusiness) < count) {
+                System.out.println("At least one of the flights being requested doesn't have the number of seats the passenger requires.");
+                return;
+            }
+            outboundBusiness = !requestedBusiness;
+            outboundSwitched = true;
+        }
+
+        // Check return capacity; fall back to the other cabin only if enough seats exist.
+        if (inbound.getAvailableSeats(requestedBusiness) < count) {
+            if (inbound.getAvailableSeats(!requestedBusiness) < count) {
+                System.out.println("At least one of the flights being requested doesn't have the number of seats the passenger requires.");
+                return;
+            }
+            inboundBusiness = !requestedBusiness;
+            inboundSwitched = true;
+        }
+
+        // Ask for passenger consent whenever either leg requires the alternate cabin.
+        if (outboundSwitched || inboundSwitched) {
+            String alternateName = requestedBusiness ? "Economy" : "Business";
+            String requestedName = requestedBusiness ? "Business" : "Economy";
+            if (outboundSwitched && inboundSwitched) {
+                System.out.println("Both flights (" + outbound.getFlightNumber() + " and "
+                        + inbound.getFlightNumber() + ") do not have enough seats in " + requestedName + ".");
+            } else if (outboundSwitched) {
+                System.out.println("Outbound flight " + outbound.getFlightNumber()
+                        + " does not have enough seats in " + requestedName + ".");
+            } else {
+                System.out.println("Return flight " + inbound.getFlightNumber()
+                        + " does not have enough seats in " + requestedName + ".");
+            }
+            if (!askYesNo("Is it acceptable to place the affected leg(s) in " + alternateName + "? (y/n): ")) {
+                System.out.println("Reservation not created.");
+                return;
+            }
+        }
+
+        int[] outboundSeats = outbound.reserveSeats(outboundBusiness, count);
+        int[] inboundSeats = inbound.reserveSeats(inboundBusiness, count);
+        if (outboundSeats == null || inboundSeats == null) {
+            if (outboundSeats != null) {
+                outbound.releaseSeats(outboundBusiness, outboundSeats);
+            }
+            if (inboundSeats != null) {
+                inbound.releaseSeats(inboundBusiness, inboundSeats);
+            }
+            System.out.println("At least one of the flights being requested doesn't have the number of seats the passenger requires.");
+            return;
+        }
+
+        Booking booking = new Booking(nextBookingNumber++, firstName, lastName,
+                outbound, outboundBusiness, outboundSeats,
+                inbound, inboundBusiness, inboundSeats);
+        bookings.add(booking);
+        System.out.println("Reservation successful!");
+        booking.displayBooking();
+    }
+
+    /** Option 2: Lists active reservations and cancels the chosen booking number. */
+    private void cancelReservation() {
+        boolean hasActive = false;
+        for (Booking booking : bookings) {
+            if (booking.isActive()) {
+                if (!hasActive) {
+                    System.out.println("\n--- Active Reservations ---");
+                    hasActive = true;
+                }
+                System.out.println(booking.briefSummary());
+            }
+        }
+        if (!hasActive) {
+            System.out.println("No active reservations to cancel.");
+            return;
+        }
+
+        Integer number = readNumber("Enter booking number to cancel (0 to return): ", 0, Integer.MAX_VALUE);
+        if (number == null || number == 0) {
+            return;
+        }
+        for (Booking booking : bookings) {
+            if (booking.getBookingNumber() == number) {
+                System.out.println(booking.cancel()
+                        ? "Reservation cancelled. Seats released on both outbound and return flights."
+                        : "Reservation was already cancelled.");
+                return;
+            }
+        }
+        System.out.println("Booking not found.");
+    }
+
+    /** Option 3: Displays all scheduled flights for a requested day (1-10). */
+    private void displayFlightsForDay() {
+        Integer day = readInt("Enter day of the month (1-10): ");
         if (day == null) {
             return;
         }
+        if (day < 1 || day > 10) {
+            System.out.println("One of the days is invalid");
+            return;
+        }
         boolean found = false;
+        System.out.println("\n--- Flights on Day " + day + " ---");
         for (Flight flight : flights) {
             if (flight.getDay() == day) {
                 System.out.println(flight.summary());
@@ -138,98 +367,19 @@ public class Reservation {
         }
     }
 
-    private void bookSeats() {
-        Integer day = readNumber("Travel day (1-10): ", 1, 10);
-        if (day == null) {
-            return;
-        }
-        String number = readLine("Flight number (or 0 to return): ");
-        if (number == null || number.equals("0")) {
-            return;
-        }
-        Flight selected = null;
+    /** Option 4: Displays the seat availability report across all loaded flights and days. */
+    private void displayAvailabilityReport() {
+        System.out.println("\n--- Seat Availability Report ---");
         for (Flight flight : flights) {
-            if (flight.getDay() == day && flight.getFlightNumber().equalsIgnoreCase(number)) {
-                selected = flight;
-                break;
-            }
-        }
-        if (selected == null) {
-            System.out.println("Flight not found for that day.");
-            return;
-        }
-        String name = readLine("Passenger/contact name: ");
-        if (name == null) {
-            return;
-        }
-        if (name.isEmpty()) {
-            System.out.println("Passenger name cannot be empty. Booking not created.");
-            return;
-        }
-        Integer cabin = readNumber("Cabin (1 = Business, 2 = Economy): ", 1, 2);
-        if (cabin == null) {
-            return;
-        }
-        Integer count = readNumber("Number of seats (1-16): ", 1, 16);
-        if (count == null) {
-            return;
-        }
-        boolean business = cabin == 1;
-        if (selected.getAvailableSeats(business) < count) {
-            System.out.println("Not enough seats in the requested cabin.");
-            if (selected.getAvailableSeats(!business) < count) {
-                System.out.println("Not enough seats in either cabin. Booking not created.");
-                return;
-            }
-            String agree;
-            do {
-                agree = readLine("Use " + (business ? "Economy" : "Business") + " instead? (y/n): ");
-                if (agree == null || agree.equalsIgnoreCase("y") || agree.equalsIgnoreCase("n")) {
-                    break;
-                }
-                System.out.println("Please enter y or n.");
-            } while (true);
-            if (agree == null || !agree.equalsIgnoreCase("y")) {
-                System.out.println("Booking not created.");
-                return;
-            }
-            business = !business;
-        }
-        int[] seats = selected.reserveSeats(business, count);
-        Booking booking = new Booking(nextBookingNumber++, name, selected, business, seats);
-        bookings.add(booking);
-        System.out.println("Booking successful!");
-        booking.displayBooking();
-    }
-
-    private void displayBookings() {
-        if (bookings.isEmpty()) {
-            System.out.println("No bookings yet.");
-        }
-        for (Booking booking : bookings) {
-            booking.displayBooking();
+            System.out.println(flight.summary());
         }
     }
 
-    private void cancelBooking() {
-        Integer number = readNumber("Booking number to cancel (0 to return): ", 0, Integer.MAX_VALUE);
-        if (number == null || number == 0) {
-            return;
-        }
-        for (Booking booking : bookings) {
-            if (booking.getBookingNumber() == number) {
-                System.out.println(booking.cancel() ? "Booking cancelled. Seats released."
-                        : "Booking was already cancelled.");
-                return;
-            }
-        }
-        System.out.println("Booking not found.");
-    }
-
+    /** Option 5 helper: Writes flight details and remaining seats for each day to output/availability.txt. */
     private void exportReport() {
         Path output = Paths.get("output", "availability.txt");
         List<String> lines = new ArrayList<String>();
-        lines.add("Seat availability report (remaining seats; not a reloadable booking file)");
+        lines.add("Seat availability report (remaining seats)");
         for (Flight flight : flights) {
             lines.add(flight.summary());
         }
@@ -243,10 +393,9 @@ public class Reservation {
     }
 
     /**
-     * File blocks: day flightCount, followed by that many rows of
-     * flightNumber departure destination businessCapacity economyCapacity.
-     * Blank lines and full-line # comments are ignored; city names use underscores.
-     * Validation finishes before the flight array is returned (no partial load).
+     * Loads and validates all day blocks from the input file before returning the Flight array.
+     * Format: header line "day flightCount", followed by flightCount lines of
+     * "flightNumber departureCity destinationCity businessSeats economySeats".
      */
     public static Flight[] loadFlights(Path path) throws IOException {
         List<String> records = new ArrayList<String>();
@@ -278,21 +427,23 @@ public class Reservation {
                 if (fields.length != 5) {
                     throw new IllegalArgumentException("Each flight needs 5 fields.");
                 }
+                String flightNo = fields[0];
+                String departure = fields[1].replace('_', ' ');
+                String destination = fields[2].replace('_', ' ');
                 for (Flight existing : loaded) {
-                    if (existing.getDay() == day && existing.getFlightNumber().equalsIgnoreCase(fields[0])) {
-                        throw new IllegalArgumentException("Duplicate flight on day " + day + ": " + fields[0]);
+                    if (existing.getDay() == day && existing.getFlightNumber().equalsIgnoreCase(flightNo)) {
+                        throw new IllegalArgumentException("Duplicate flight on day " + day + ": " + flightNo);
                     }
                     if (existing.getDay() == day
-                            && existing.getDeparture().equalsIgnoreCase(fields[1].replace('_', ' '))
-                            && existing.getDestination().equalsIgnoreCase(fields[2].replace('_', ' '))) {
+                            && existing.getDeparture().equalsIgnoreCase(departure)
+                            && existing.getDestination().equalsIgnoreCase(destination)) {
                         throw new IllegalArgumentException("Duplicate route on day " + day + ": "
-                                + fields[1] + " -> " + fields[2]);
+                                + departure + " -> " + destination);
                     }
                 }
                 int business = parseRange(fields[3], 0, 16, "business capacity");
                 int economy = parseRange(fields[4], 0, 16, "economy capacity");
-                loaded.add(new Flight(day, fields[0], fields[1].replace('_', ' '),
-                        fields[2].replace('_', ' '), business, economy));
+                loaded.add(new Flight(day, flightNo, departure, destination, business, economy));
             }
         }
         if (loaded.isEmpty()) {
@@ -301,6 +452,7 @@ public class Reservation {
         return loaded.toArray(new Flight[loaded.size()]);
     }
 
+    /** Parses an integer within [min, max] from a flight data file token. */
     private static int parseRange(String value, int min, int max, String label) {
         try {
             int number = Integer.parseInt(value);
@@ -308,7 +460,7 @@ public class Reservation {
                 return number;
             }
         } catch (NumberFormatException ex) {
-            // Convert malformed file values into a useful loading error.
+            // Converted into IllegalArgumentException below for unified file error reporting.
         }
         throw new IllegalArgumentException("Invalid " + label + ": " + value + " (" + min + "-" + max + ")");
     }

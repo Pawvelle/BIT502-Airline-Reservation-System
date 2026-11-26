@@ -1,0 +1,156 @@
+BIT502 Assignment - Airline Reservation System
+Test Plan (Final Submission)
+===================================================
+
+Environment: Java (JDK 25), VS Code / Terminal
+Input Data File: data/flights.txt (50 flights across Days 1-10)
+Output Data File: output/availability.txt
+
+--------------------------------------------------------------------------------
+TC01 | File Input Validation (Invalid File) | Invalid Input
+Input:
+  wrong.txt
+Expected Result:
+  Shows "Cannot load flights: wrong.txt" without crashing and asks again.
+Actual Result:
+  Showed "Cannot load flights: wrong.txt" and asked for the file path again.
+Status: PASS
+
+--------------------------------------------------------------------------------
+TC02 | File Input Loading (Valid File) | Valid Input
+Input:
+  (Press Enter to use default data/flights.txt)
+Expected Result:
+  Loads 50 flights across Days 1-10 into the Flight array and shows the menu.
+Actual Result:
+  Showed "Loaded 50 flights from data/flights.txt" and showed options 1-5.
+Status: PASS
+
+--------------------------------------------------------------------------------
+TC03 | Option 3 - Display Flights Available (Valid Day) | Valid Input
+Input:
+  Menu: 3, Day: 1
+Expected Result:
+  Shows all 6 flights for Day 1 with Business and Economy seat counts.
+Actual Result:
+  Showed NZ1101, NZ1102, NZ1201, NZ1202, NZ1301, NZ1302 for Day 1.
+Status: PASS
+
+--------------------------------------------------------------------------------
+TC04 | Option 3 - Display Flights Available (Invalid Day) | Invalid Input
+Input:
+  Menu: 3, Day: abc, then Day: 25
+Expected Result:
+  "abc" is caught as an invalid number and asks again; "25" shows
+  "One of the days is invalid".
+Actual Result:
+  "abc" showed "Invalid number. Please enter a whole number."; "25" showed
+  "One of the days is invalid" and returned to the main menu.
+Status: PASS
+
+--------------------------------------------------------------------------------
+TC05 | Option 1 - Valid Round-Trip Reservation | Valid Input
+Input:
+  Menu: 1
+  First name: Alice, Last name: Smith
+  Departure: Auckland, Destination: Wellington
+  Leaving day: 1, Returning day: 3
+  Cabin: 1 (Business), Seats: 2
+Expected Result:
+  Books 2 Business seats on Day 1 NZ1101 and Day 3 NZ1102, assigning [1, 2]
+  on both flights and printing Booking #1.
+Actual Result:
+  Created Booking #1 [ACTIVE] for Alice Smith with Business seats [1, 2] on
+  Day 1 NZ1101 and Day 3 NZ1102.
+Status: PASS
+
+--------------------------------------------------------------------------------
+TC06 | Option 1 - Full Cabin Alternate Class Offer | Valid Interaction
+Input:
+  Menu: 1
+  First name: Bob, Last name: Lee
+  Departure: Auckland, Destination: Wellington
+  Leaving day: 1, Returning day: 3
+  Cabin: 1 (Business), Seats: 2
+  Confirm Economy instead: y
+Expected Result:
+  Sees Business class is full on both flights, asks y/n to switch to Economy,
+  and after "y" assigns Economy seats [3, 4] on both flights.
+Actual Result:
+  Asked to switch to Economy for NZ1101 and NZ1102; after entering "y",
+  created Booking #2 [ACTIVE] with Economy seats [3, 4] on both flights.
+Status: PASS
+
+--------------------------------------------------------------------------------
+TC07 | Option 1 - No Flight Between Cities | Invalid Input
+Input:
+  Menu: 1
+  First name: Chris, Last name: Ng
+  Departure: Auckland, Destination: Dunedin
+  Leaving day: 1, Returning day: 3, Cabin: 2, Seats: 1
+Expected Result:
+  Shows "No flight between those cities" without making a booking.
+Actual Result:
+  Showed "No flight between those cities" and returned to the main menu.
+Status: PASS
+
+--------------------------------------------------------------------------------
+TC08 | Option 1 - Invalid Travel Days | Invalid Input
+Input:
+  Case A: Leaving day: 5, Returning day: 2 (return before leave)
+  Case B: Leaving day: 12, Returning day: 13 (outside 1-10)
+Expected Result:
+  Both cases show "One of the days is invalid".
+Actual Result:
+  Both Case A and Case B showed "One of the days is invalid".
+Status: PASS
+
+--------------------------------------------------------------------------------
+TC09 | Option 1 - Not Enough Seats on Requested Flights | Boundary/Invalid
+Input:
+  Menu: 1
+  First name: Frank, Last name: Ho
+  Departure: Auckland, Destination: Wellington
+  Leaving day: 1, Returning day: 3, Cabin: 2, Seats: 10
+Expected Result:
+  Shows "At least one of the flights being requested doesn't have the number
+  of seats the passenger requires."
+Actual Result:
+  Showed the exact message and did not create a booking.
+Status: PASS
+
+--------------------------------------------------------------------------------
+TC10 | Option 2 - Cancel Round-Trip Reservation | Valid Input
+Input:
+  Menu: 2, Booking number: 1
+Expected Result:
+  Cancels Booking #1 and frees seats [1, 2] back to Business class on both
+  Day 1 NZ1101 and Day 3 NZ1102.
+Actual Result:
+  Showed "Reservation cancelled. Seats released on both outbound and return
+  flights." Availability report showed Day 1 NZ1101 Business: 2 and Day 3
+  NZ1102 Business: 2.
+Status: PASS
+
+--------------------------------------------------------------------------------
+TC11 | Option 4 - Seat Availability Report | Valid Input
+Input:
+  Menu: 4
+Expected Result:
+  Prints remaining Business and Economy seats for all 50 flights across Days 1-10.
+Actual Result:
+  Showed all 50 flights with the correct remaining seats (Day 1 NZ1101
+  Economy: 2, Day 3 NZ1102 Economy: 2 from Bob Lee's booking).
+Status: PASS
+
+--------------------------------------------------------------------------------
+TC12 | Invalid Menu Choices & Option 5 - Exit and Save File | Mixed
+Input:
+  Menu: 9, Menu: abc, Menu: 5
+Expected Result:
+  "9" and "abc" show "Invalid option. Please enter 1 to 5."; "5" saves the
+  report to output/availability.txt and exits cleanly.
+Actual Result:
+  Rejected "9" and "abc"; option 5 saved the updated report to
+  output/availability.txt and exited normally.
+Status: PASS
